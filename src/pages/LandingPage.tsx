@@ -159,6 +159,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Workflow Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">Built Around Real Investor Workflow</h2>
+            <p className="text-neutral-600 dark:text-neutral-400 mt-3 max-w-3xl">
+              Move from discovery to conviction in a single loop: discover companies, open profile, enrich live from the web, then take action.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <StepCard index="01" title="Discover" description="Search + filter companies with fast, thesis-aligned controls." />
+            <StepCard index="02" title="Open Profile" description="Review overview, timeline, and live context in one page." />
+            <StepCard index="03" title="Enrich" description="Run AI scrape to extract structured intelligence from public pages." />
+            <StepCard index="04" title="Take Action" description="Save to list, add notes, follow, and export in seconds." />
+          </div>
+        </div>
+      </section>
+
+      {/* Enrichment Details */}
+      <section className="py-20 px-6 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div>
+              <h3 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">What Live Enrichment Returns</h3>
+              <p className="text-neutral-600 dark:text-neutral-400 mt-3">
+                Every enrichment run turns messy public web content into an analyst-ready output you can act on.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-6 space-y-3">
+              <EnrichmentItem label="Summary" value="1-2 sentence concise overview" />
+              <EnrichmentItem label="What They Do" value="3-6 bullet points" />
+              <EnrichmentItem label="Keywords" value="5-10 high-signal terms" />
+              <EnrichmentItem label="Derived Signals" value="2-4 inferred business signals" />
+              <EnrichmentItem label="Sources" value="Exact scraped URLs + timestamp" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center bg-indigo-600 dark:bg-indigo-900/30 rounded-3xl p-12 relative overflow-hidden">
@@ -201,5 +240,24 @@ function SparklesIcon({ className }: { className?: string }) {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
     </svg>
+  );
+}
+
+function StepCard({ index, title, description }: { index: string; title: string; description: string }) {
+  return (
+    <div className="p-5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+      <div className="text-[11px] uppercase tracking-wide font-semibold text-indigo-600 dark:text-indigo-400">{index}</div>
+      <h4 className="mt-1 text-base font-semibold text-neutral-900 dark:text-white">{title}</h4>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{description}</p>
+    </div>
+  );
+}
+
+function EnrichmentItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2 border-b border-neutral-200 dark:border-neutral-800 last:border-0">
+      <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{label}</span>
+      <span className="text-xs text-neutral-500 dark:text-neutral-400">{value}</span>
+    </div>
   );
 }

@@ -19,6 +19,11 @@ Create a `.env` file in the project root.
 | `JWT_SECRET` | Yes (recommended) | Auth token sign/verify | If missing, server falls back to an insecure default. Set a strong value in all environments. |
 | `APP_URL` | No | Not currently used in runtime code | Kept from template; safe to omit for local dev. |
 | `NODE_ENV` | No | Server mode switch | `production` enables static serving from `dist`. |
+| `VITE_API_URL` | Frontend deploys | Frontend API base | Set on Vercel to backend domain (Render/Railway/etc.). |
+| `CORS_ORIGIN` | Backend deploys | CORS allowlist | Comma-separated origins allowed to call backend API. |
+| `CORS_ALLOW_VERCEL` | Optional | Backend CORS | `true` allows `https://*.vercel.app` origins. |
+| `COOKIE_SECURE` | Backend deploys | Auth cookies | Use `true` in production HTTPS. |
+| `COOKIE_SAMESITE` | Backend deploys | Auth cookies | Use `none` for cross-site frontend/backend cookies. |
 
 Example:
 
@@ -26,6 +31,11 @@ Example:
 GROQ_API_KEY=your_groq_api_key
 JWT_SECRET=replace_with_a_long_random_secret
 APP_URL=http://localhost:3000
+VITE_API_URL=
+CORS_ORIGIN=
+CORS_ALLOW_VERCEL=false
+COOKIE_SECURE=true
+COOKIE_SAMESITE=none
 ```
 
 ## Setup
@@ -65,7 +75,7 @@ npm start
 - `npm run lint`: TypeScript no-emit check.
 - `npm run preview`: Preview Vite build (frontend only).
 - `npm start`: Runs production server (`node server.ts`).
-- `npm run clean`: Removes `dist` (uses `rm -rf`, Unix-style).
+- `npm run clean`: Removes `dist` with cross-platform Node script.
 
 ## Features
 
@@ -77,12 +87,13 @@ npm start
 
 ### Dashboard
 - KPI cards (thesis matches, pipeline volume, estimated deal flow, sectors).
-- Live intelligence feed UI.
+- Live intelligence feed from internet signals + local enrichment/activity fallback.
 - Saved search quick preview.
 - Pipeline stage summary.
 
 ### Companies
-- Company list with search.
+- Sortable + paginated companies table.
+- Global search + advanced filters.
 - Advanced filters: industry, stage, employee ranges, enriched-only.
 - Multi-select actions + CSV export.
 - Save current search filters.
@@ -91,16 +102,21 @@ npm start
 
 ### Company Profile
 - Detailed company view.
-- AI enrichment panel with summary/signals.
+- AI enrichment panel with:
+  - Summary (1-2 sentences)
+  - What they do (3-6 bullets)
+  - Keywords (5-10)
+  - Derived signals (2-4 inferred signals)
+  - Sources (exact URLs scraped + timestamp)
 - Notes editing.
 - Save-to-list menu.
-- Share/copy-link and additional actions menu.
+- Share/copy-link, follow, export brief, and additional actions menu.
 - Timeline UI.
 
 ### Lists
 - Create/delete lists.
 - Add/remove companies in lists.
-- Export list to JSON.
+- Export list to JSON and CSV.
 
 ### Saved Searches
 - Save named filter sets.
@@ -152,7 +168,12 @@ npm start
 ### Enrichment
 - `POST /api/enrich` (auth required)
   - Input: `{ "url": "https://company.com" }`
-  - Output: summary, `what_they_do`, keywords, derived signals, source, timestamp
+  - Output: summary, `what_they_do`, keywords, derived signals, sources, timestamp
+
+### Live Feed
+- `GET /api/live-feed` (auth required)
+  - Query: `companies` (comma-separated names), optional `limit`, `perCompany`
+  - Output: live internet feed items from public Google News RSS sources
 
 ## Data Storage
 
@@ -164,8 +185,12 @@ npm start
 
 ## Notes
 
-- Landing page hero image is loaded from `public/landing-dashboard.png`.
-- If auth cookies are blocked in your browser/environment, review secure cookie behavior (`secure: true`, `sameSite: "none"` in `server.ts`).
+- Landing page hero preview switches by theme:
+  - Light: `public/landing-dashboard-light.png`
+  - Dark: `public/landing-dashboard-dark.png`
+- For split frontend/backend deploys (Vercel + Render), set:
+  - `VITE_API_URL` on frontend
+  - `CORS_ORIGIN` / `CORS_ALLOW_VERCEL` and cookie vars on backend.
 
 ## License
 
