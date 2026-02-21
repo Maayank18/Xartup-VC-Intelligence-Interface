@@ -19,9 +19,39 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-producti
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
+  const isProd = process.env.NODE_ENV === "production";
+  const allowedOrigins = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const cookieSecure =
+    process.env.COOKIE_SECURE === "true" ||
+    (process.env.COOKIE_SECURE !== "false" && isProd);
+  const cookieSameSite = (process.env.COOKIE_SAMESITE ||
+    (cookieSecure ? "none" : "lax")) as "lax" | "strict" | "none";
 
   app.set('trust proxy', 1); // Trust first proxy (required for secure cookies behind nginx)
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowAnyOrigin = allowedOrigins.length === 0 && !isProd;
+    const isAllowedOrigin =
+      typeof origin === "string" && (allowAnyOrigin || allowedOrigins.includes(origin));
+
+    if (isAllowedOrigin && origin) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    next();
+  });
   app.use(express.json());
   app.use(cookieParser());
 
@@ -68,8 +98,8 @@ async function startServer() {
       
       res.cookie('token', token, { 
         httpOnly: true, 
-        secure: true, // Required for SameSite=None
-        sameSite: 'none', // Required for iframe context
+        secure: cookieSecure,
+        sameSite: cookieSameSite,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
 
@@ -100,8 +130,8 @@ async function startServer() {
       
       res.cookie('token', token, { 
         httpOnly: true, 
-        secure: true, // Required for SameSite=None
-        sameSite: 'none', // Required for iframe context
+        secure: cookieSecure,
+        sameSite: cookieSameSite,
         maxAge: 24 * 60 * 60 * 1000
       });
 
@@ -113,7 +143,11 @@ async function startServer() {
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    res.clearCookie('token');
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+    });
     res.json({ message: "Logged out" });
   });
 
