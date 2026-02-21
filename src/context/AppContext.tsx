@@ -29,6 +29,7 @@ interface AppState {
   saveSearch: (name: string, filters: any) => void;
   deleteSearch: (id: string) => void;
   updateCompany: (company: Company) => void;
+  updateCompanyNote: (companyId: string, note: string) => void;
   addCompany: (company: Company) => void;
   deleteCompanies: (companyIds: string[]) => void;
   enrichCompany: (id: string) => Promise<void>;
@@ -108,7 +109,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const companiesWithUserData = companies.map(company => ({
     ...company,
     isFavorite: user ? (userFavorites[user.id] || []).includes(company.id) : false,
-    notes: user ? (userNotes[user.id] || {})[company.id] : undefined
+    notes: user ? ((userNotes[user.id] || {})[company.id] ?? company.notes) : company.notes
   }));
 
   // Persist to localStorage
@@ -267,6 +268,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addActivity('Added Company', `Added new company ${newCompany.name}`);
   };
 
+  const updateCompanyNote = (companyId: string, note: string) => {
+    if (!user) return;
+    setUserNotes(prev => ({
+      ...prev,
+      [user.id]: {
+        ...(prev[user.id] || {}),
+        [companyId]: note
+      }
+    }));
+  };
+
   const deleteCompanies = (companyIds: string[]) => {
     if (companyIds.length === 0) return;
     const idSet = new Set(companyIds);
@@ -394,6 +406,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveSearch,
       deleteSearch,
       updateCompany,
+      updateCompanyNote,
       addCompany,
       deleteCompanies,
       enrichCompany,

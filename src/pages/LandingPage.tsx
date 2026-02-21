@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Primitives';
-import { ArrowRight, Zap, Shield, Target } from 'lucide-react';
+import { ArrowRight, Bot, Zap, Shield, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BrandLogo } from '../components/BrandLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -79,7 +79,7 @@ export default function LandingPage() {
               </span>
             </h1>
             <p className="text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Discover, enrich, and track high-growth companies with an AI-powered platform designed for thesis-driven investors.
+              Discover, enrich, and track high-growth companies with an AI-powered platform and built-in Scout chatbot for thesis-driven investors.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/register">
@@ -89,7 +89,7 @@ export default function LandingPage() {
               </Link>
               <Link to="/login">
                 <Button variant="outline" size="lg" className="h-12 px-8 text-lg bg-white dark:bg-neutral-900">
-                  View Demo
+                  Try Scout Chat
                 </Button>
               </Link>
             </div>
@@ -139,11 +139,16 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
             <FeatureCard 
               icon={<Target className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
               title="Thesis-Driven Search"
               description="Define your focus sectors, stages, and geography. Our AI scores every company against your specific investment criteria."
+            />
+            <FeatureCard
+              icon={<Bot className="w-8 h-8 text-violet-600 dark:text-violet-400" />}
+              title="Scout Assistant Chatbot"
+              description="Ask Scout to rank companies, explain thesis fit, and produce diligence plans from your selected context list."
             />
             <FeatureCard 
               icon={<Zap className="w-8 h-8 text-amber-500" />}
@@ -165,14 +170,15 @@ export default function LandingPage() {
           <div className="mb-10">
             <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">Built Around Real Investor Workflow</h2>
             <p className="text-neutral-600 dark:text-neutral-400 mt-3 max-w-3xl">
-              Move from discovery to conviction in a single loop: discover companies, open profile, enrich live from the web, then take action.
+              Move from discovery to conviction in a single loop: discover companies, open profile, enrich live from the web, ask Scout chatbot, then take action.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <StepCard index="01" title="Discover" description="Search + filter companies with fast, thesis-aligned controls." />
             <StepCard index="02" title="Open Profile" description="Review overview, timeline, and live context in one page." />
             <StepCard index="03" title="Enrich" description="Run AI scrape to extract structured intelligence from public pages." />
-            <StepCard index="04" title="Take Action" description="Save to list, add notes, follow, and export in seconds." />
+            <StepCard index="04" title="Ask Scout" description="Chat for ranking, prioritization, and diligence guidance." />
+            <StepCard index="05" title="Take Action" description="Save to list, add notes, follow, and export in seconds." />
           </div>
         </div>
       </section>

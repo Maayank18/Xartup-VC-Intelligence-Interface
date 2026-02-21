@@ -5,6 +5,7 @@ import {
   Building2, 
   List as ListIcon, 
   Bookmark, 
+  Bot,
   Settings,
   Search,
   LogOut,
@@ -73,6 +74,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <NavItem to="/companies" icon={<Building2 size={18} />} label="Companies" onClick={() => setIsSidebarOpen(false)} />
           <NavItem to="/lists" icon={<ListIcon size={18} />} label="Lists" onClick={() => setIsSidebarOpen(false)} />
           <NavItem to="/saved" icon={<Bookmark size={18} />} label="Saved Searches" onClick={() => setIsSidebarOpen(false)} />
+          <NavItem to="/scout" icon={<Bot size={18} />} label="Scout Assistant" onClick={() => setIsSidebarOpen(false)} />
         </nav>
 
         <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 space-y-4">

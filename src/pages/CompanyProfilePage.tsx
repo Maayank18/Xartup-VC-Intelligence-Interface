@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 export default function CompanyProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { companies, enrichCompany, lists, addCompanyToList, updateCompany, toggleFavorite } = useApp();
+  const { companies, enrichCompany, lists, addCompanyToList, updateCompanyNote, toggleFavorite } = useApp();
   const [isEnriching, setIsEnriching] = useState(false);
   const [showListMenu, setShowListMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -40,8 +40,9 @@ export default function CompanyProfilePage() {
     return <div className="p-8 text-center">Company not found</div>;
   }
 
-  // Initialize notes from company if available (mocking it for now as local state if not in type)
-  // In a real app, we'd sync this with the backend/context
+  useEffect(() => {
+    setNotes(company.notes || '');
+  }, [company.id, company.notes]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,11 +69,9 @@ export default function CompanyProfilePage() {
   };
 
   const handleSaveNotes = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNotes(e.target.value);
-    // Debounce save or save on blur in real app
-    if (company) {
-        updateCompany({ ...company, notes: e.target.value });
-    }
+    const nextNote = e.target.value;
+    setNotes(nextNote);
+    updateCompanyNote(company.id, nextNote);
   };
 
   const handleShare = async () => {
@@ -441,7 +440,7 @@ export default function CompanyProfilePage() {
                 <textarea 
                     className="w-full h-full min-h-[160px] p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/20 rounded-xl text-neutral-700 dark:text-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 resize-none placeholder:text-neutral-400"
                     placeholder="Add your notes or thesis here..."
-                    value={company.notes || notes}
+                    value={notes}
                     onChange={handleSaveNotes}
                 />
             </div>
@@ -510,7 +509,7 @@ function TimelineItem({ date, title, description, type }: { date: string, title:
             <div className="pl-2">
                 <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{title}</h3>
-                    <span className="text-xs text-neutral-400">• {date}</span>
+                    <span className="text-xs text-neutral-400">â€¢ {date}</span>
                 </div>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">{description}</p>
             </div>

@@ -74,7 +74,7 @@ npm start
 - `npm run build`: TypeScript build + Vite production bundle.
 - `npm run lint`: TypeScript no-emit check.
 - `npm run preview`: Preview Vite build (frontend only).
-- `npm start`: Runs production server (`node server.ts`).
+- `npm start`: Runs production server (`NODE_ENV=production` via `tsx`).
 - `npm run clean`: Removes `dist` with cross-platform Node script.
 
 ## Features
@@ -134,6 +134,24 @@ npm start
 - Notification center (mock data UI).
 - Responsive sidebar layout.
 
+### Scout Assistant
+- Thesis-aware chatbot for sourcing, ranking, and diligence support.
+- Select context companies (up to 10) for grounded analysis.
+- Suggested prompts and free-form chat input.
+- Route: `/scout` (requires login).
+
+## Product Reference Benchmarks
+
+Use these products as inspiration for UX patterns and data workflows:
+
+- Harmonic (`harmonic.ai`): end-to-end discovery workflow and signal-centric operating views.
+- Cardinal (`trycardinal.ai`): thesis-oriented scouting and conviction framing.
+- PitchBook / Crunchbase / CB Insights: market map patterns, company profile depth, and comparable research flows.
+- Affinity: relationship intelligence and team collaboration workflow patterns.
+- Dealroom / Tracxn / SourceScrub: discovery funneling, filtering, and list-building workflows.
+
+These are reference points only; FlowStack should keep its own thesis-first workflow and information architecture.
+
 ## Core Functions (Frontend State/API)
 
 ### `AuthContext` functions
@@ -174,6 +192,17 @@ npm start
 - `GET /api/live-feed` (auth required)
   - Query: `companies` (comma-separated names), optional `limit`, `perCompany`
   - Output: live internet feed items from public Google News RSS sources
+
+### Scout Chat
+- `POST /api/chat` (auth required)
+  - Input: `{ "message": "...", "thesis": {...}, "companies": [...] }`
+  - Output: `{ "reply": "...", "timestamp": "ISO string" }`
+
+### Chatbot Usage
+1. Open Scout Assistant from the sidebar (`/scout`).
+2. Select context companies.
+3. Ask a prompt or use a suggested question.
+4. Use the response to prioritize outreach, rank targets, or draft diligence steps.
 
 ## Data Storage
 

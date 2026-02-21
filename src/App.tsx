@@ -9,6 +9,7 @@ import CompaniesPage from './pages/CompaniesPage';
 import CompanyProfilePage from './pages/CompanyProfilePage';
 import ListsPage from './pages/ListsPage';
 import SavedSearchesPage from './pages/SavedSearchesPage';
+import ScoutAssistantPage from './pages/ScoutAssistantPage';
 import SettingsPage from './pages/SettingsPage';
 import UserProfilePage from './pages/UserProfilePage';
 import LoginPage from './pages/LoginPage';
@@ -78,6 +79,13 @@ export default function App() {
                 <ProtectedRoute>
                   <Layout>
                     <SavedSearchesPage />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/scout" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ScoutAssistantPage />
                   </Layout>
                 </ProtectedRoute>
               } />

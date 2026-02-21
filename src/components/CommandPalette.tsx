@@ -7,6 +7,7 @@ import {
   Building2, 
   List, 
   Bookmark, 
+  Bot,
   Settings, 
   User, 
   Moon, 
@@ -88,6 +89,10 @@ export function CommandPalette() {
                   <CommandItem onSelect={() => runCommand(() => navigate('/saved'))}>
                     <Bookmark className="mr-2 h-4 w-4" />
                     Saved Searches
+                  </CommandItem>
+                  <CommandItem onSelect={() => runCommand(() => navigate('/scout'))}>
+                    <Bot className="mr-2 h-4 w-4" />
+                    Scout Assistant
                   </CommandItem>
                   <CommandItem onSelect={() => runCommand(() => navigate('/profile'))}>
                     <User className="mr-2 h-4 w-4" />

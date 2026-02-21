@@ -26,6 +26,23 @@ interface LiveNewsItem {
   publishedAt: string;
 }
 
+interface ScoutContextCompany {
+  id?: string;
+  name: string;
+  industry?: string;
+  stage?: string;
+  location?: string;
+  employee_count?: string;
+  total_funding?: string;
+  tags?: string[];
+  description?: string;
+  enrichment?: {
+    summary?: string;
+    keywords?: string[];
+    derived_signals?: string[];
+  } | null;
+}
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
@@ -328,6 +345,82 @@ ${textContent}
     } catch (error: any) {
       console.error("Enrichment error:", error);
       res.status(500).json({ error: error.message || "Failed to enrich data" });
+    }
+  });
+
+  app.post("/api/chat", authenticateToken, async (req, res) => {
+    try {
+      const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+      const thesis = req.body?.thesis || {};
+      const rawCompanies = Array.isArray(req.body?.companies) ? req.body.companies : [];
+      const companies = rawCompanies.slice(0, 10) as ScoutContextCompany[];
+
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GROQ_API_KEY is not set" });
+      }
+
+      const companyContext = companies
+        .map((c, idx) => {
+          const enrichmentSummary = c.enrichment?.summary || "";
+          const keywords = (c.enrichment?.keywords || []).slice(0, 8).join(", ");
+          const signals = (c.enrichment?.derived_signals || []).slice(0, 4).join(" | ");
+          return [
+            `${idx + 1}. ${c.name}`,
+            `Industry: ${c.industry || "Unknown"} | Stage: ${c.stage || "Unknown"} | Location: ${c.location || "Unknown"}`,
+            `Employees: ${c.employee_count || "Unknown"} | Funding: ${c.total_funding || "Unknown"}`,
+            `Tags: ${(c.tags || []).slice(0, 8).join(", ") || "None"}`,
+            `Description: ${c.description || "N/A"}`,
+            `Enrichment Summary: ${enrichmentSummary || "N/A"}`,
+            `Enrichment Keywords: ${keywords || "N/A"}`,
+            `Derived Signals: ${signals || "N/A"}`,
+          ].join("\n");
+        })
+        .join("\n\n");
+
+      const systemPrompt = [
+        "You are Scout, a thesis-aware VC copilot.",
+        "You help with sourcing, prioritization, and diligence.",
+        "Use only the provided thesis and company context.",
+        "If data is missing, call it out briefly and provide best-effort recommendations.",
+        "Respond with concise, structured guidance suitable for an investment team.",
+        "Formatting rules:",
+        "- Use short paragraphs and bullet points.",
+        "- For rankings, use numbered lines (1., 2., 3.) with one company per line.",
+        "- Use plain text markdown only for bold company names (e.g., **Company**).",
+        "- Avoid one giant paragraph.",
+        "",
+        `THESIS CONTEXT (JSON): ${JSON.stringify(thesis).slice(0, 3000)}`,
+        "",
+        `COMPANY CONTEXT:\n${companyContext || "No company context provided."}`,
+      ].join("\n");
+
+      const groq = new Groq({ apiKey });
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message.slice(0, 2000) },
+        ],
+      });
+
+      const reply = completion.choices[0]?.message?.content?.trim();
+      if (!reply) {
+        return res.status(500).json({ error: "No response returned from model" });
+      }
+
+      res.json({
+        reply,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Scout chat error:", error);
+      res.status(500).json({ error: error.message || "Failed to process scout chat request" });
     }
   });
 
