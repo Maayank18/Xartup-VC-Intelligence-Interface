@@ -11,12 +11,12 @@ import {
   Calendar, 
   Sparkles, 
   MoreHorizontal,
-  Plus,
   Check,
   FileText,
   Zap,
-  Clock,
-  Share2
+  Share2,
+  Download,
+  Heart
 } from 'lucide-react';
 import { getFaviconUrl } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 export default function CompanyProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { companies, enrichCompany, lists, addCompanyToList, updateCompany } = useApp();
+  const { companies, enrichCompany, lists, addCompanyToList, updateCompany, toggleFavorite } = useApp();
   const [isEnriching, setIsEnriching] = useState(false);
   const [showListMenu, setShowListMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -34,6 +34,7 @@ export default function CompanyProfilePage() {
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const company = companies.find(c => c.id === id);
+  const isFollowing = !!company?.isFavorite;
 
   if (!company) {
     return <div className="p-8 text-center">Company not found</div>;
@@ -102,6 +103,33 @@ export default function CompanyProfilePage() {
     } catch {
       toast.error('Failed to copy link');
     }
+  };
+
+  const handleExportBrief = () => {
+    const payload = {
+      name: company.name,
+      domain: company.domain,
+      industry: company.industry,
+      stage: company.stage,
+      location: company.location,
+      employee_count: company.employee_count,
+      total_funding: company.total_funding,
+      description: company.description,
+      notes: company.notes || notes || '',
+      enrichment: company.enrichment || null,
+      exportedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${company.name.toLowerCase().replace(/\s+/g, '_')}_brief.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success('Company brief exported');
   };
 
   // Mock data for the design
@@ -188,6 +216,33 @@ export default function CompanyProfilePage() {
                 </div>
               )}
             </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" onClick={handleEnrich} isLoading={isEnriching} disabled={isEnriching}>
+            <Sparkles size={16} className="mr-2" /> {company.enrichment ? 'Re-Enrich' : 'Enrich'}
+          </Button>
+          <Button variant="outline" onClick={() => setShowListMenu((v) => !v)}>
+            Save
+          </Button>
+          <Button
+            variant={isFollowing ? 'danger' : 'secondary'}
+            onClick={() => {
+              toggleFavorite(company.id);
+              toast.success(isFollowing ? 'Unfollowed company' : 'Following company');
+            }}
+          >
+            <Heart size={16} className="mr-2" fill={isFollowing ? 'currentColor' : 'none'} />
+            {isFollowing ? 'Following' : 'Follow'}
+          </Button>
+          <Button variant="secondary" onClick={handleExportBrief}>
+            <Download size={16} className="mr-2" /> Export Brief
+          </Button>
+          <div className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
+            Workflow: discover | profile | enrich | action
+          </div>
         </div>
       </div>
 
@@ -320,11 +375,46 @@ export default function CompanyProfilePage() {
                         </div>
                     </div>
                     <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
+                         <span className="text-xs font-semibold text-neutral-500 uppercase block mb-2">What they do</span>
+                         <ul className="space-y-1.5 text-sm text-neutral-700 dark:text-neutral-300 list-disc pl-5">
+                            {(company.enrichment.what_they_do || []).slice(0, 6).map((item, i) => (
+                              <li key={i}>{item}</li>
+                            ))}
+                         </ul>
+                    </div>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
+                         <span className="text-xs font-semibold text-neutral-500 uppercase block mb-2">Keywords</span>
+                         <div className="flex flex-wrap gap-2">
+                            {(company.enrichment.keywords || []).slice(0, 10).map((keyword, i) => (
+                                <Badge key={i} variant="neutral">{keyword}</Badge>
+                            ))}
+                         </div>
+                    </div>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
                          <span className="text-xs font-semibold text-neutral-500 uppercase block mb-2">Signals</span>
                          <div className="flex flex-wrap gap-2">
                             {company.enrichment.derived_signals.map((signal, i) => (
                                 <Badge key={i} variant="indigo" className="bg-indigo-50 text-indigo-700 border-indigo-100">{signal}</Badge>
                             ))}
+                         </div>
+                    </div>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
+                         <span className="text-xs font-semibold text-neutral-500 uppercase block mb-2">Sources</span>
+                         <div className="space-y-1.5">
+                            {(company.enrichment.sources || (company.enrichment.source ? [company.enrichment.source] : [])).map((src, i) => (
+                              <a
+                                key={i}
+                                href={src}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block text-xs text-indigo-600 dark:text-indigo-400 hover:underline break-all"
+                              >
+                                {src}
+                              </a>
+                            ))}
+                            <div className="text-[11px] text-neutral-400">
+                              Updated {new Date(company.enrichment.timestamp).toLocaleString()}
+                            </div>
                          </div>
                     </div>
                 </div>

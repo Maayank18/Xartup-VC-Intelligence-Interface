@@ -17,6 +17,15 @@ const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
+interface LiveNewsItem {
+  id: string;
+  company: string;
+  title: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+}
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
@@ -192,31 +201,72 @@ async function startServer() {
         return res.status(400).json({ error: "URL is required" });
       }
 
-      console.log(`Enriching URL: ${url}`);
+      const normalizedUrl = url.startsWith("http://") || url.startsWith("https://")
+        ? url
+        : `https://${url}`;
+      const rootUrl = new URL(normalizedUrl);
+      const host = rootUrl.hostname;
 
-      // 1. Fetch the website content
-      // Add a User-Agent to avoid immediate blocking
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        },
+      console.log(`Enriching URL: ${normalizedUrl}`);
+
+      const getHeaders = () => ({
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch URL: ${response.statusText}`);
+      const fetchPageText = async (candidateUrl: string) => {
+        const response = await fetch(candidateUrl, { headers: getHeaders() });
+        if (!response.ok) return null;
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        $("script, style, svg, noscript, iframe, link, meta").remove();
+        const title = $("title").text().trim();
+        const text = $("body").text().replace(/\s+/g, " ").trim().substring(0, 12000);
+        if (!text) return null;
+        return { text: `${title ? `${title}\n` : ""}${text}`, html };
+      };
+
+      const home = await fetchPageText(rootUrl.toString());
+      if (!home) {
+        throw new Error("Failed to fetch company homepage");
       }
 
-      const html = await response.text();
-      
-      // 2. Parse with Cheerio to clean up the HTML (reduce token count)
-      const $ = cheerio.load(html);
-      
-      // Remove scripts, styles, and other non-content elements
-      $('script, style, svg, noscript, iframe, link, meta').remove();
-      
-      // Extract text content
-      const textContent = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 15000); // Limit to ~15k chars for Groq context window
+      // Crawl only a small set of same-host likely signal pages.
+      const $home = cheerio.load(home.html);
+      const sourceUrls = new Set<string>([rootUrl.toString()]);
+      const likelyPathRe = /(career|jobs|hiring|blog|news|changelog|release|product|pricing|about|team)/i;
+
+      $home("a[href]").each((_, el) => {
+        const href = $home(el).attr("href");
+        if (!href) return;
+        try {
+          const abs = new URL(href, rootUrl.toString());
+          if (abs.hostname !== host) return;
+          if (!likelyPathRe.test(abs.pathname)) return;
+          sourceUrls.add(abs.toString());
+        } catch {
+          // ignore invalid links
+        }
+      });
+
+      const urlsToFetch = Array.from(sourceUrls).slice(0, 6);
+      const fetchedPages = await Promise.all(
+        urlsToFetch.map(async (u) => {
+          try {
+            const result = await fetchPageText(u);
+            if (!result) return null;
+            return { url: u, text: result.text };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const validPages = fetchedPages.filter((p): p is { url: string; text: string } => !!p);
+      const textContent = validPages
+        .map((p) => `SOURCE: ${p.url}\n${p.text}`)
+        .join("\n\n---\n\n")
+        .substring(0, 30000);
 
       // 3. Call Groq for enrichment
       const apiKey = process.env.GROQ_API_KEY;
@@ -227,22 +277,24 @@ async function startServer() {
       const groq = new Groq({ apiKey });
 
       const prompt = `
-        Analyze the following website content for a company. 
-        Extract and infer the following information in JSON format.
-        
-        Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
-        
-        Required JSON Structure:
-        {
-          "summary": "A 1-2 sentence summary of the company",
-          "what_they_do": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
-          "keywords": ["Keyword 1", "Keyword 2", "Keyword 3"],
-          "derived_signals": ["Signal 1", "Signal 2"]
-        }
+Analyze the following multi-page website content for a company and return ONLY valid JSON.
 
-        Website Content:
-        ${textContent}
-      `;
+JSON schema:
+{
+  "summary": "1-2 sentences",
+  "what_they_do": ["3-6 bullets"],
+  "keywords": ["5-10 concise keywords"],
+  "derived_signals": ["2-4 inferred signals from the scraped pages"]
+}
+
+Rules:
+- Keep statements grounded in provided content.
+- "derived_signals" should infer evidence like careers presence, recent updates, docs/changelog, hiring, etc.
+- No markdown, no extra text.
+
+CONTENT:
+${textContent}
+`;
 
       const completion = await groq.chat.completions.create({
         messages: [
@@ -264,15 +316,87 @@ async function startServer() {
 
       const enrichmentData = JSON.parse(jsonContent);
 
+      const scrapedSources = validPages.map((p) => p.url);
+
       res.json({
         ...enrichmentData,
-        source: url,
+        source: normalizedUrl,
+        sources: scrapedSources,
         timestamp: new Date().toISOString()
       });
 
     } catch (error: any) {
       console.error("Enrichment error:", error);
       res.status(500).json({ error: error.message || "Failed to enrich data" });
+    }
+  });
+
+  app.get("/api/live-feed", authenticateToken, async (req, res) => {
+    try {
+      const companiesRaw = String(req.query.companies || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 10);
+      const perCompanyLimit = Math.max(1, Math.min(3, Number(req.query.perCompany || 2)));
+      const totalLimit = Math.max(1, Math.min(20, Number(req.query.limit || 10)));
+
+      if (companiesRaw.length === 0) {
+        return res.json({ items: [] as LiveNewsItem[] });
+      }
+
+      const parseGoogleNewsRss = (xml: string, company: string): LiveNewsItem[] => {
+        const $ = cheerio.load(xml, { xmlMode: true });
+        const items: LiveNewsItem[] = [];
+        $("item").each((_, el) => {
+          if (items.length >= perCompanyLimit) return;
+          const title = $(el).find("title").text().trim();
+          const url = $(el).find("link").text().trim();
+          const source = $(el).find("source").text().trim() || "Google News";
+          const publishedAt = $(el).find("pubDate").text().trim();
+
+          if (!title || !url) return;
+          items.push({
+            id: `${company}-${Buffer.from(url).toString("base64").slice(0, 16)}`,
+            company,
+            title,
+            source,
+            url,
+            publishedAt: new Date(publishedAt || Date.now()).toISOString(),
+          });
+        });
+        return items;
+      };
+
+      const requests = companiesRaw.map(async (company) => {
+        const q = encodeURIComponent(`"${company}" startup OR funding OR product OR hiring`);
+        const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
+        try {
+          const response = await fetch(rssUrl, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+          });
+          if (!response.ok) return [] as LiveNewsItem[];
+          const xml = await response.text();
+          return parseGoogleNewsRss(xml, company);
+        } catch {
+          return [] as LiveNewsItem[];
+        }
+      });
+
+      const results = (await Promise.all(requests)).flat();
+      const deduped = Array.from(
+        new Map(results.map((item) => [item.url, item])).values()
+      )
+        .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        .slice(0, totalLimit);
+
+      res.json({ items: deduped });
+    } catch (error: any) {
+      console.error("Live feed error:", error);
+      res.status(500).json({ error: "Failed to fetch live intelligence feed" });
     }
   });
 

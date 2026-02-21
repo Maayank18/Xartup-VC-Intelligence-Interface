@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 import { 
@@ -12,6 +12,7 @@ import {
   Zap
 } from 'lucide-react';
 import { Button, Badge } from '../components/ui/Primitives';
+import { buildApiUrl, parseApiResponse } from '../lib/api';
 
 interface LiveFeedItem {
   id: string;
@@ -23,10 +24,12 @@ interface LiveFeedItem {
   score: number;
   dotColor: string;
   timestamp: number;
+  articleUrl?: string;
 }
 
 export default function DashboardPage() {
   const { companies, savedSearches, thesis, activities } = useApp();
+  const [internetFeed, setInternetFeed] = useState<LiveFeedItem[]>([]);
 
   const getDotColor = (industry?: string) => {
     const palette = ['bg-indigo-500', 'bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500'];
@@ -65,7 +68,57 @@ export default function DashboardPage() {
     return `${days}d ago`;
   };
 
-  const liveFeedItems = useMemo<LiveFeedItem[]>(() => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadInternetFeed = async () => {
+      try {
+        const companyNames = companies.slice(0, 8).map((c) => c.name).join(',');
+        if (!companyNames) {
+          setInternetFeed([]);
+          return;
+        }
+
+        const url = `${buildApiUrl('/api/live-feed')}?companies=${encodeURIComponent(companyNames)}&limit=10&perCompany=2`;
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) {
+          setInternetFeed([]);
+          return;
+        }
+
+        const data = await parseApiResponse<{ items: Array<{ id: string; company: string; title: string; source: string; url: string; publishedAt: string }> }>(response);
+        const mapped: LiveFeedItem[] = data.items.map((item, idx) => {
+          const company = companies.find((c) => c.name.toLowerCase() === item.company.toLowerCase());
+          const ts = new Date(item.publishedAt).getTime() || Date.now() - idx * 60000;
+          return {
+            id: item.id,
+            companyId: company?.id,
+            name: item.company,
+            action: item.title,
+            source: item.source || 'Google News',
+            time: timeAgo(ts),
+            score: getScore(`${item.company}-${item.title}`),
+            dotColor: getDotColor(company?.industry),
+            timestamp: ts,
+            articleUrl: item.url,
+          };
+        });
+
+        if (!cancelled) setInternetFeed(mapped);
+      } catch {
+        if (!cancelled) setInternetFeed([]);
+      }
+    };
+
+    loadInternetFeed();
+    const interval = window.setInterval(loadInternetFeed, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [companies]);
+
+  const localFeedItems = useMemo<LiveFeedItem[]>(() => {
     const enrichmentItems: LiveFeedItem[] = companies.flatMap((company) => {
       if (!company.enrichment) return [];
       const ts = new Date(company.enrichment.timestamp).getTime() || Date.now();
@@ -126,6 +179,13 @@ export default function DashboardPage() {
       };
     });
   }, [activities, companies]);
+
+  const liveFeedItems = useMemo(() => {
+    const merged = [...internetFeed, ...localFeedItems]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 10);
+    return merged;
+  }, [internetFeed, localFeedItems]);
 
   // Calculate some stats
   const totalCompanies = companies.length;
@@ -216,6 +276,7 @@ export default function DashboardPage() {
                   dotColor={item.dotColor}
                   score={item.score}
                   companyId={item.companyId}
+                  articleUrl={item.articleUrl}
                 />
               </React.Fragment>
             ))}
@@ -293,9 +354,17 @@ function StatCard({ label, value, icon, trend, trendUp, customBadge, description
   );
 }
 
-const SignalItem = ({ name, action, time, dotColor, source, score, companyId }: { name: string, action: string, time: string, dotColor: string, source: string, score: number, companyId?: string }) => {
+const SignalItem = ({ name, action, time, dotColor, source, score, companyId, articleUrl }: { name: string, action: string, time: string, dotColor: string, source: string, score: number, companyId?: string, articleUrl?: string }) => {
     const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      companyId ? <Link to={`/companies/${companyId}`}>{children}</Link> : <>{children}</>;
+      articleUrl ? (
+        <a href={articleUrl} target="_blank" rel="noreferrer">
+          {children}
+        </a>
+      ) : companyId ? (
+        <Link to={`/companies/${companyId}`}>{children}</Link>
+      ) : (
+        <>{children}</>
+      );
 
     return (
         <Wrapper>

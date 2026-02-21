@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Primitives';
-import { Plus, Trash2, Download, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Download, ChevronRight, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Papa from 'papaparse';
 
 export default function ListsPage() {
-  const { lists, addList, deleteList, companies } = useApp();
+  const { lists, addList, deleteList, companies, removeCompanyFromList } = useApp();
   const [newListName, setNewListName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -18,7 +19,7 @@ export default function ListsPage() {
     }
   };
 
-  const exportList = (listId: string) => {
+  const exportListJson = (listId: string) => {
     const list = lists.find(l => l.id === listId);
     if (!list) return;
 
@@ -32,6 +33,30 @@ export default function ListsPage() {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
+  };
+
+  const exportListCsv = (listId: string) => {
+    const list = lists.find(l => l.id === listId);
+    if (!list) return;
+    const listCompanies = companies.filter(c => list.companyIds.includes(c.id));
+    const csv = Papa.unparse(
+      listCompanies.map(c => ({
+        Name: c.name,
+        Domain: c.domain,
+        Industry: c.industry,
+        Stage: c.stage,
+        Location: c.location,
+        Employees: c.employee_count,
+        Funding: c.total_funding || '',
+      }))
+    );
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${list.name.replace(/\s+/g, '_').toLowerCase()}_export.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -68,11 +93,18 @@ export default function ListsPage() {
               <h3 className="font-semibold text-lg text-neutral-900 dark:text-white">{list.name}</h3>
               <div className="flex gap-1">
                 <button 
-                  onClick={() => exportList(list.id)}
+                  onClick={() => exportListJson(list.id)}
                   className="p-1.5 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
                   title="Export JSON"
                 >
                   <Download size={16} />
+                </button>
+                <button
+                  onClick={() => exportListCsv(list.id)}
+                  className="p-1.5 text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-xs font-semibold"
+                  title="Export CSV"
+                >
+                  CSV
                 </button>
                 <button 
                   onClick={() => deleteList(list.id)}
@@ -93,9 +125,18 @@ export default function ListsPage() {
                 const company = companies.find(c => c.id === id);
                 if (!company) return null;
                 return (
-                  <div key={id} className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                    {company.name}
+                  <div key={id} className="flex items-center justify-between gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                      <span className="truncate">{company.name}</span>
+                    </div>
+                    <button
+                      onClick={() => removeCompanyFromList(list.id, id)}
+                      className="text-neutral-400 hover:text-red-500 transition-colors"
+                      title="Remove from list"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 );
               })}

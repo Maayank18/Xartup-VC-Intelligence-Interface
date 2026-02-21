@@ -3,6 +3,7 @@ export interface Company {
   name: string;
   domain: string;
   logo_url: string;
+  createdAt?: string;
   description: string;
   industry: string;
   stage: string;
@@ -22,7 +23,8 @@ export interface EnrichmentData {
   what_they_do: string[];
   keywords: string[];
   derived_signals: string[];
-  source: string;
+  source?: string;
+  sources?: string[];
   timestamp: string;
 }
 

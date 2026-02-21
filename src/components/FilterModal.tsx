@@ -47,7 +47,7 @@ export function FilterModal({ isOpen, onClose, onApply, activeFilters }: FilterM
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 z-50 p-6"
+            className="fixed left-1/2 top-6 sm:top-1/2 -translate-x-1/2 sm:-translate-y-1/2 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-3rem)] sm:max-h-[85vh] overflow-y-auto bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 z-50 p-5 sm:p-6"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Filter Companies</h2>
